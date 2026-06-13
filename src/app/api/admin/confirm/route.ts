@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Extraer IDs y números
-    const numberRows = (reservation.reservation_numbers ?? []) as Array<{
+    const numberRows = (reservation.reservation_numbers ?? []) as unknown as Array<{
       raffle_numbers: { id: string; number: number } | null
     }>
     const numberIds = numberRows.map((rn) => rn.raffle_numbers?.id).filter(Boolean) as string[]

@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const numberRows = (reservation.reservation_numbers ?? []) as Array<{
+    const numberRows = (reservation.reservation_numbers ?? []) as unknown as Array<{
       raffle_numbers: { id: string } | null
     }>
     const numberIds = numberRows.map((rn) => rn.raffle_numbers?.id).filter(Boolean) as string[]
