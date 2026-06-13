@@ -37,10 +37,10 @@ export async function GET(request: NextRequest) {
     // Flatten reservation_numbers
     const formatted = data?.map((r) => ({
       ...r,
-      numbers: r.reservation_numbers
-        ?.map((rn: { raffle_numbers: { number: number } | null }) => rn.raffle_numbers?.number)
-        .filter(Boolean)
-        .sort((a: number, b: number) => a - b) ?? [],
+      numbers: (r.reservation_numbers as unknown as Array<{ raffle_numbers: { number: number } | null }>)
+        ?.map((rn) => rn.raffle_numbers?.number)
+        .filter((n): n is number => n !== undefined)
+        .sort((a, b) => a - b) ?? [],
       buyer: r.buyers,
     }))
 

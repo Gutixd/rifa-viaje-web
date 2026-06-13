@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Notificación Telegram
-    const buyer = reservation.buyers as { full_name: string } | null
+    const buyer = reservation.buyers as unknown as { full_name: string } | null
     const tgMsg = buildConfirmMessage({
       reservationId: reservation_id,
       buyerName: buyer?.full_name ?? 'Desconocido',
