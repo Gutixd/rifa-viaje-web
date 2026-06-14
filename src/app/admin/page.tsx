@@ -7,6 +7,7 @@ import StatsOverview from '@/components/admin/StatsOverview'
 import ReservationCard from '@/components/admin/ReservationCard'
 import type { ReservationWithDetails, ReservationStatus, AdminStats } from '@/types'
 import { RAFFLE_CONFIG } from '@/config/raffle'
+import { supabaseBrowser } from '@/lib/supabase/browser'
 
 const STATUS_TABS: { label: string; value: string }[] = [
   { label: 'Pendientes', value: 'pending' },
@@ -73,8 +74,27 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchData()
-    const id = setInterval(() => fetchData(), 60_000)
-    return () => clearInterval(id)
+    let debounce: ReturnType<typeof setTimeout>
+
+    const channel = supabaseBrowser
+      .channel('admin-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, () => {
+        clearTimeout(debounce)
+        debounce = setTimeout(() => fetchData(), 300)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'raffle_numbers' }, () => {
+        clearTimeout(debounce)
+        debounce = setTimeout(() => fetchData(), 300)
+      })
+      .subscribe()
+
+    const fallback = setInterval(() => fetchData(), 120_000)
+
+    return () => {
+      clearTimeout(debounce)
+      supabaseBrowser.removeChannel(channel)
+      clearInterval(fallback)
+    }
   }, [fetchData])
 
   const handleLogout = async () => {

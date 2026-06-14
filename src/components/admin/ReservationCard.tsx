@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, X, Loader2, Phone, Mail, MessageSquare } from 'lucide-react'
+import { Check, X, Loader2, Phone, Mail, MessageSquare, Trash2 } from 'lucide-react'
 import type { ReservationWithDetails } from '@/types'
 import { formatCurrency, formatDate, statusLabel } from '@/lib/utils'
 
@@ -19,7 +19,7 @@ const statusStyles: Record<string, string> = {
 }
 
 export default function ReservationCard({ reservation, onUpdate }: ReservationCardProps) {
-  const [loading, setLoading] = useState<'confirm' | 'reject' | null>(null)
+  const [loading, setLoading] = useState<'confirm' | 'reject' | 'delete' | null>(null)
 
   const canAct = ['pending', 'pending_cash'].includes(reservation.status)
 
@@ -52,6 +52,25 @@ export default function ReservationCard({ reservation, onUpdate }: ReservationCa
     }
   }
 
+  const handleDelete = async () => {
+    const msg =
+      reservation.status === 'confirmed'
+        ? `⚠️ Esto eliminará una venta CONFIRMADA de ${reservation.buyer.full_name} y liberará los números ${reservation.numbers.join(', ')}. ¿Continuar?`
+        : `¿Eliminar definitivamente la reserva de ${reservation.buyer.full_name}?`
+    if (!confirm(msg)) return
+    setLoading('delete')
+    try {
+      await fetch('/api/admin/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reservation_id: reservation.id }),
+      })
+      onUpdate()
+    } finally {
+      setLoading(null)
+    }
+  }
+
   return (
     <div className="bg-surface-800 border border-surface-600 rounded-2xl p-5 space-y-4">
       {/* Header */}
@@ -63,13 +82,27 @@ export default function ReservationCard({ reservation, onUpdate }: ReservationCa
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
-          <span
-            className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
-              statusStyles[reservation.status] ?? ''
-            }`}
-          >
-            {statusLabel(reservation.status)}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                statusStyles[reservation.status] ?? ''
+              }`}
+            >
+              {statusLabel(reservation.status)}
+            </span>
+            <button
+              onClick={handleDelete}
+              disabled={loading !== null}
+              title="Eliminar reserva"
+              className="p-1.5 rounded-lg text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30"
+            >
+              {loading === 'delete' ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
           <span className="text-xs font-bold text-brand-400">
             {formatCurrency(reservation.total_amount)}
           </span>

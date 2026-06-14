@@ -9,6 +9,7 @@ import PurchaseModal from './PurchaseModal'
 import type { RaffleNumber, NumberStatus } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 import { RAFFLE_CONFIG } from '@/config/raffle'
+import { supabaseBrowser } from '@/lib/supabase/browser'
 
 interface NumberGridProps {
   initialNumbers: RaffleNumber[]
@@ -48,10 +49,25 @@ export default function NumberGrid({ initialNumbers }: NumberGridProps) {
     }
   }, [])
 
-  // Poll every 30s
+  // Realtime subscription + 2-min fallback poll
   useEffect(() => {
-    const id = setInterval(() => fetchNumbers(true), 30_000)
-    return () => clearInterval(id)
+    let debounce: ReturnType<typeof setTimeout>
+
+    const channel = supabaseBrowser
+      .channel('raffle-numbers-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'raffle_numbers' }, () => {
+        clearTimeout(debounce)
+        debounce = setTimeout(() => fetchNumbers(true), 200)
+      })
+      .subscribe()
+
+    const fallback = setInterval(() => fetchNumbers(true), 120_000)
+
+    return () => {
+      clearTimeout(debounce)
+      supabaseBrowser.removeChannel(channel)
+      clearInterval(fallback)
+    }
   }, [fetchNumbers])
 
   const toggleNumber = (n: number) => {
